@@ -79,6 +79,9 @@
                             tampered.push(posit);
                     }
                     return tampered;
+                },
+                superhash: function() {
+                    return this.hash(JSON.stringify(this.hashes));
                 }
             }
 
@@ -89,10 +92,20 @@
             positStack.push(posit);
             positStack.push(new Posit([42], ['type'], 'Lunch', 'Friday'));
             positStack.push(new Posit([42], ['type'], 'Dinner', 'Friday'));
-            alert('Tampered posits:\n' + positStack.tampered());
+            alert(
+                    'Tampered posits:\n' + 
+                    positStack.tampered() + '\n' + 
+                    'Superhash:\n' +
+                    positStack.superhash()
+            );
             positStack.posits[0].value = 'Breakfast';
             positStack.posits[1].value = 'Breakfast';
-            alert('Tampered posits:\n' + positStack.tampered());
+            alert(
+                    'Tampered posits:\n' + 
+                    positStack.tampered() + '\n' + 
+                    'Superhash:\n' +
+                    positStack.superhash()
+            );
 
         </script>
     </body>
