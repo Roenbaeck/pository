@@ -1,0 +1,99 @@
+<html>
+    <head>
+        <title>Pository - Experimenting with Posits and Assertions</title>
+    </head>
+    <body>
+        
+        <script>
+            // the timepoint is optional 
+            function Posit(identities, roles, value, timepoint) {
+                this.identities = identities;
+                this.roles = roles;
+                this.value = value;
+                this.timepoint = timepoint;
+            }
+            Posit.prototype = {
+                identities: null,
+                roles: null,
+                value: null,
+                timepoint: null,
+                equals: function (otherPosit) {
+                    if (otherPosit.value != this.value)
+                        return false;
+                    if (otherPosit.timepoint != this.timepoint)
+                        return false;
+                    var index, identity, role;
+                    for (var i = 0; i < this.identities.length; i++) {
+                        identity = this.identities[i];
+                        index = otherPosit.identities.indexOf(identity);
+                        if (index < 0) 
+                            return false;
+                        if (this.roles[index] != otherPosit.roles[index])
+                            return false;
+                    }
+                    return true;
+                },
+                toString: function () {
+                    return JSON.stringify(this);
+                }
+            }
+
+            function PositStack() {
+                this.posits = [];
+                this.hashes = [];
+            }
+            PositStack.prototype = {
+                posits: null,
+                hashes: null,
+                hash: function (json) {
+                    var hash = 0, i, chr, len;
+                    if (json.length === 0) return hash;
+                    for (i = 0, len = json.length; i < len; i++) {
+                        chr = json.charCodeAt(i);
+                        hash = ((hash << 5) - hash) + chr;
+                        hash |= 0; // Convert to 32bit integer
+                    }
+                    return hash;
+                },
+                push: function(posit) {
+                    for(var i = 0; i < this.posits.length; i++) {
+                        if(this.posits[i].equals(posit))
+                            return i;
+                    }
+                    posit.hash = this.hashes[this.hashes.length - 1];
+                    var json = JSON.stringify(posit);
+                    delete posit.hash;
+                    this.hashes.push(this.hash(json));
+                    return this.posits.push(posit);
+                },
+                tampered: function () {
+                    var tampered = [];
+                    var i = this.hashes.length;
+                    var posit;
+                    while (--i >= 0) {
+                        posit = this.posits[i];
+                        posit.hash = this.hashes[i - 1];
+                        var json = JSON.stringify(posit);
+                        delete posit.hash;
+                        if (this.hash(json) != this.hashes[i])
+                            tampered.push(posit);
+                    }
+                    return tampered;
+                }
+            }
+
+            // a stack holding all posits
+            var positStack = new PositStack();
+            // a static posit
+            var posit = new Posit([42], ['type'], 'Lunch');
+            positStack.push(posit);
+            positStack.push(new Posit([42], ['type'], 'Lunch', 'Friday'));
+            positStack.push(new Posit([42], ['type'], 'Dinner', 'Friday'));
+            alert('Tampered posits:\n' + positStack.tampered());
+            positStack.posits[0].value = 'Breakfast';
+            positStack.posits[1].value = 'Breakfast';
+            alert('Tampered posits:\n' + positStack.tampered());
+
+        </script>
+    </body>
+</html>
