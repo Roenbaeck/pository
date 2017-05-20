@@ -62,6 +62,8 @@
                 }
             }
 
+            // a stack holding a number of posits
+            // together with their individual but chain dependent hashes
             function PositStack() {
                 this.posits = [];
                 this.hashes = [];
@@ -69,6 +71,8 @@
             PositStack.prototype = {
                 posits: null,
                 hashes: null,
+                superhashes: null,
+                // use a simple hashing function in this proof of concept
                 hash: function (json) {
                     var hash = 0, i, chr, len;
                     if (json.length === 0) return hash;
@@ -79,7 +83,11 @@
                     }
                     return hash;
                 },
+                // push returns the index of the added or existing posit
+                // the index can serve as an identifier for the posit
+                // such that it can be referenced by an assertion
                 push: function(posit) {
+                    // do not add if already added
                     for(var i = 0; i < this.posits.length; i++) {
                         if(this.posits[i].equals(posit))
                             return i;
@@ -88,8 +96,9 @@
                     var json = JSON.stringify(posit);
                     delete posit.hash;
                     this.hashes.push(this.hash(json));
-                    return this.posits.push(posit);
+                    return this.posits.push(posit) - 1;
                 },
+                // returns any posits that have been tampered with
                 tampered: function () {
                     var tampered = [];
                     var i = this.hashes.length;
@@ -112,18 +121,30 @@
             // a stack holding all posits
             var positStack = new PositStack();
             // a static posit
-            var posit = new Posit([42], ['type'], 'Lunch');
-            positStack.push(posit);
+            positStack.push(new Posit([42], ['type'], 'Lunch'));
+            // attempt to push an equal posit
+            positStack.push(new Posit([42], ['type'], 'Lunch'));
             positStack.push(new Posit([42], ['type'], 'Lunch', 'Friday'));
             positStack.push(new Posit([42], ['type'], 'Dinner', 'Friday'));
+            // no posits have yet been tampered with
             alert(
                     'Tampered posits:\n' + 
                     positStack.tampered() + '\n' + 
                     'Superhash:\n' +
                     positStack.superhash()
             );
+            // tampering: first a simple change of value
             positStack.posits[0].value = 'Breakfast';
-            positStack.posits[1].value = 'Breakfast';
+            alert(
+                    'Tampered posits:\n' + 
+                    positStack.tampered() + '\n' + 
+                    'Superhash:\n' +
+                    positStack.superhash()
+            );
+            // tampering: then a more sinister attempt to change the value and recalculate the hash
+            positStack.posits[0].value = 'Snacking';
+            positStack.hashes[0] = positStack.hash(JSON.stringify(positStack.posits[0]));
+            // also note that the superhash will indicate an integrity problem with the hashes
             alert(
                     'Tampered posits:\n' + 
                     positStack.tampered() + '\n' + 
