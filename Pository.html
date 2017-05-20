@@ -5,8 +5,16 @@
     <body>
         
         <script>
-            // the timepoint is optional 
+            // a posit is formalized as: 
+            // ({(i_1,r_1),...,(i_n,r_n)},v,t)
+            // it can be implemented as: 
+            // an array of identities
+            // an array of corresponding unique roles
+            // a value
+            // an optional timepoint
             function Posit(identities, roles, value, timepoint) {
+                if(!this.unique(roles))
+                    throw 'RoleConflictException';
                 this.identities = identities;
                 this.roles = roles;
                 this.value = value;
@@ -18,11 +26,18 @@
                 value: null,
                 timepoint: null,
                 equals: function (otherPosit) {
+                    // if the value differs it is another posit
                     if (otherPosit.value != this.value)
                         return false;
+                    // if the timepoint differs it is another posit
                     if (otherPosit.timepoint != this.timepoint)
                         return false;
+                    // if the number of identities differ it is another posit
+                    if (otherPosit.identities.length != this.identities.length)
+                        return false;
                     var index, identity, role;
+                    // if the number of identities are the same, but not all 
+                    // identites appear with the same roles it is another posit
                     for (var i = 0; i < this.identities.length; i++) {
                         identity = this.identities[i];
                         index = otherPosit.identities.indexOf(identity);
@@ -30,6 +45,15 @@
                             return false;
                         if (this.roles[index] != otherPosit.roles[index])
                             return false;
+                    }
+                    return true;
+                },
+                unique: function (roles) {
+                    var seen = {}; // use an object as a hash table
+                    for (var i = 0; i < roles.length; i++) {
+                        if(seen[roles[i]]) 
+                            return false;
+                        seen[roles[i]] = 1;
                     }
                     return true;
                 },
