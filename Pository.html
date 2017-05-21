@@ -62,6 +62,45 @@
                 }
             }
 
+            // an assertion is formalized as: 
+            // (P,p,α,t)
+            // it can be implemented as: 
+            // an identity of a positor
+            // a reference to a posit
+            // a value in the range [-1,1] representing the reliability
+            // a mandatory timepoint
+            function Assertion(positor, posit, reliability, timepoint) {
+                if(!this.reliable(reliability))
+                    throw 'ReliabilityOutOfRangeException';
+                this.positor = positor;
+                this.posit = posit;
+                this.reliability = reliability;
+                this.timepoint = timepoint;
+            }
+            Assertion.prototype = {
+                positor: null,
+                posit: null,
+                reliability: null,
+                timepoint: null,
+                // everything must be equal in order for it to be the same assertion
+                equals: function (otherPosit) {
+                    if (this.positor == otherPosit.positor
+                     && this.posit == otherPosit.posit
+                     && this.reliability == otherPosit.reliability
+                     && this.timepoint == otherPosit.timepoint)
+                        return true;
+                    return false;
+                },
+                reliable: function (reliability) {
+                    if (reliability > 1 || reliability < -1)
+                        return false;
+                    return true;
+                }
+                toString: function () {
+                    return JSON.stringify(this);
+                }
+            }
+
             // a stack holding a number of posits
             // together with their individual but chain dependent hashes
             function PositStack() {
@@ -151,6 +190,7 @@
                     'Superhash:\n' +
                     positStack.superhash()
             );
+
 
         </script>
     </body>
