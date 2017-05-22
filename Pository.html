@@ -83,11 +83,11 @@
                 reliability: null,
                 timepoint: null,
                 // everything must be equal in order for it to be the same assertion
-                equals: function (otherPosit) {
-                    if (this.positor == otherPosit.positor
-                     && this.posit == otherPosit.posit
-                     && this.reliability == otherPosit.reliability
-                     && this.timepoint == otherPosit.timepoint)
+                equals: function (otherAssertion) {
+                    if (this.positor == otherAssertion.positor
+                     && this.posit == otherAssertion.posit
+                     && this.reliability == otherAssertion.reliability
+                     && this.timepoint == otherAssertion.timepoint)
                         return true;
                     return false;
                 },
@@ -101,7 +101,7 @@
                 }
             }
 
-            // a stack holding a number of posits
+            // a stack holding a number of unique posits
             // together with their individual but chain dependent hashes
             function PositStack() {
                 this.posits = [];
@@ -122,20 +122,21 @@
                     }
                     return hash;
                 },
-                // push returns the index of the added or existing posit
-                // the index can serve as an identifier for the posit
+                // push returns the added or an existing posit
+                // it can serve as an identifier for the posit
                 // such that it can be referenced by an assertion
                 push: function(posit) {
                     // do not add if already added
                     for(var i = 0; i < this.posits.length; i++) {
                         if(this.posits[i].equals(posit))
-                            return i;
+                            return this.posits[i];
                     }
                     posit.hash = this.hashes[this.hashes.length - 1];
                     var json = JSON.stringify(posit);
                     delete posit.hash;
                     this.hashes.push(this.hash(json));
-                    return this.posits.push(posit) - 1;
+                    this.posits.push(posit);
+                    return posit;
                 },
                 // returns any posits that have been tampered with
                 tampered: function () {
@@ -157,54 +158,108 @@
                 }
             }
 
-            // a stack holding all posits
-            var positStack = new PositStack();
+            // a stack holding a number of unique assertions
+            // and a stack of posits
+            // and a method for finding the assertions in bitemporal effect
+            function AssertionStack() {
+                this.assertions = [];
+                this.positStack = new PositStack();
+            }
+            AssertionStack.prototype = {
+                assertions: null,
+                positStack: null,
+                push: function(assertion) {
+                    // first set the correct posit reference
+                    assertion.posit = this.positStack.push(assertion.posit);                    
+                    // do not add if already added
+                    for(var i = 0; i < this.assertions.length; i++) {
+                        if(this.assertions[i].equals(assertion))
+                            return this.assertions[i];
+                    }
+                    this.assertions.push(assertion);
+                    return assertion;
+                },
+                at: function(positTimepoint, assertionTimepoint) {
+                    // order the posits first according to their identities 
+                    // and within those by their posit timepoints
+                    var posit, orderedPosits = []; 
+                    var positEndpointMillis = new Date(positTimepoint).getTime();
+                    var i = this.positStack.posits.length;
+                    while(i--) {
+                        posit = this.positStack.posits[i];
+                        if(posit.timepoint.getTime() <= positEndpointMillis)
+                            orderedPosits.push(posit);
+                    }
+                    orderedPosits.sort(
+                        function(a, b) {
+                            var i = a.identity - b.identity;
+                            return i ? i : a.timepoint.getTime() - b.timepoint.getTime();
+                        }
+                    );
+                    var assertionEndpointMillis = new Date(assertionTimepoint).getTime();
+                    var assertion;
+                    i = this.assertions.length;
+                    while(i--) {
+                        assertion = this.assertions[i];
+                        if(assertion.timepoint.getTime() <= assertionEndpointMillis) {
+                            // alert(orderedPosits.indexOf(assertion.posit));
+                        }
+                    }
+                }
+            }
+
+
+            // a stack holding all assertions
+            var assertionStack = new AssertionStack();
             // posits and assertions will be added according to "A Bitemporal Round of Golf"
             // http://www.anchormodeling.com/wp-content/uploads/2011/05/A-Bitemporal-Round-of-Golf.pdf
             // a posit indicating the golf score after playing the first hole
             var p1 = new Posit([42], ['score'], 5, new Date('1972-08-20 01:00'));
-            positStack.push(p1);
             // an assertion made by Archie for the score
             var A1 = new Assertion('Archie', p1, 1, new Date('1972-08-20 01:01'));
             // Donna agrees with Archie
             var D1 = new Assertion('Donna', p1, 1, new Date('1972-08-20 01:02'));
+            assertionStack.push(A1);
+            assertionStack.push(D1);            
             // two posits indicating the golf scores after playing the second hole
             var p2A = new Posit([42], ['score'], 9, new Date('1972-08-20 02:00'));
             var p2D = new Posit([42], ['score'], 10, new Date('1972-08-20 02:00'));
-            positStack.push(p2A);
-            positStack.push(p2D);            
             var A2 = new Assertion('Archie', p2A, 1, new Date('1972-08-20 02:01'));
             // Donna disagrees with Archie
             var D2 = new Assertion('Donna', p2D, 1, new Date('1972-08-20 02:02'));
+            assertionStack.push(A2);
+            assertionStack.push(D2);
+
+            assertionStack.at('Archie', '1972-08-20 02:00', '1972-08-20 02:00');
 
             // no posits have yet been tampered with
             alert(
                     'Tampered posits:\n' + 
-                    positStack.tampered() + '\n' + 
+                    assertionStack.positStack.tampered() + '\n' + 
                     'Superhash:\n' +
-                    positStack.superhash()
+                    assertionStack.positStack.superhash()
             );
             // tampering: first a simple change of value
             p2A.value = 8;
             alert(
                     'Tampered posits:\n' + 
-                    positStack.tampered() + '\n' + 
+                    assertionStack.positStack.tampered() + '\n' + 
                     'Superhash:\n' +
-                    positStack.superhash()
+                    assertionStack.positStack.superhash()
             );
             // tampering: then a more sinister attempt to change the value and recalculate the hash
             p2A.value = 8;
-            var idx = positStack.posits.indexOf(p2A);
-            p2A.hash = positStack.hashes[idx - 1];
-            positStack.hashes[idx] = positStack.hash(JSON.stringify(p2A));
+            var idx = assertionStack.positStack.posits.indexOf(p2A);
+            p2A.hash = assertionStack.positStack.hashes[idx - 1];
+            assertionStack.positStack.hashes[idx] = assertionStack.positStack.hash(JSON.stringify(p2A));
             delete p2A.hash;
             // in this case the hash is correct for the particular posit, but the following one will
             // be wrong and the changed superhash indicates an integrity breach of the hashes
             alert(
                     'Tampered posits:\n' + 
-                    positStack.tampered() + '\n' + 
+                    assertionStack.positStack.tampered() + '\n' + 
                     'Superhash:\n' +
-                    positStack.superhash()
+                    assertionStack.positStack.superhash()
             );
 
 
