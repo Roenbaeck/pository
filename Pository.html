@@ -95,7 +95,7 @@
                     if (reliability > 1 || reliability < -1)
                         return false;
                     return true;
-                }
+                },
                 toString: function () {
                     return JSON.stringify(this);
                 }
@@ -159,12 +159,24 @@
 
             // a stack holding all posits
             var positStack = new PositStack();
-            // a static posit
-            positStack.push(new Posit([42], ['type'], 'Lunch'));
-            // attempt to push an equal posit
-            positStack.push(new Posit([42], ['type'], 'Lunch'));
-            positStack.push(new Posit([42], ['type'], 'Lunch', 'Friday'));
-            positStack.push(new Posit([42], ['type'], 'Dinner', 'Friday'));
+            // posits and assertions will be added according to "A Bitemporal Round of Golf"
+            // http://www.anchormodeling.com/wp-content/uploads/2011/05/A-Bitemporal-Round-of-Golf.pdf
+            // a posit indicating the golf score after playing the first hole
+            var p1 = new Posit([42], ['score'], 5, new Date('1972-08-20 01:00'));
+            positStack.push(p1);
+            // an assertion made by Archie for the score
+            var A1 = new Assertion('Archie', p1, 1, new Date('1972-08-20 01:01'));
+            // Donna agrees with Archie
+            var D1 = new Assertion('Donna', p1, 1, new Date('1972-08-20 01:02'));
+            // two posits indicating the golf scores after playing the second hole
+            var p2A = new Posit([42], ['score'], 9, new Date('1972-08-20 02:00'));
+            var p2D = new Posit([42], ['score'], 10, new Date('1972-08-20 02:00'));
+            positStack.push(p2A);
+            positStack.push(p2D);            
+            var A2 = new Assertion('Archie', p2A, 1, new Date('1972-08-20 02:01'));
+            // Donna disagrees with Archie
+            var D2 = new Assertion('Donna', p2D, 1, new Date('1972-08-20 02:02'));
+
             // no posits have yet been tampered with
             alert(
                     'Tampered posits:\n' + 
@@ -173,7 +185,7 @@
                     positStack.superhash()
             );
             // tampering: first a simple change of value
-            positStack.posits[0].value = 'Breakfast';
+            p2A.value = 8;
             alert(
                     'Tampered posits:\n' + 
                     positStack.tampered() + '\n' + 
@@ -181,9 +193,13 @@
                     positStack.superhash()
             );
             // tampering: then a more sinister attempt to change the value and recalculate the hash
-            positStack.posits[0].value = 'Snacking';
-            positStack.hashes[0] = positStack.hash(JSON.stringify(positStack.posits[0]));
-            // also note that the superhash will indicate an integrity problem with the hashes
+            p2A.value = 8;
+            var idx = positStack.posits.indexOf(p2A);
+            p2A.hash = positStack.hashes[idx - 1];
+            positStack.hashes[idx] = positStack.hash(JSON.stringify(p2A));
+            delete p2A.hash;
+            // in this case the hash is correct for the particular posit, but the following one will
+            // be wrong and the changed superhash indicates an integrity breach of the hashes
             alert(
                     'Tampered posits:\n' + 
                     positStack.tampered() + '\n' + 
